@@ -1,49 +1,63 @@
 import streamlit as st
-from pypdf import PdfWriter
+from pypdf import PdfReader, PdfWriter
 import io
 
 # Konfigurasi halaman web
-st.set_page_config(page_title="Penggabung PDF Otomatis", page_icon="📄")
+st.set_page_config(page_title="Penggabung PDF Selang-Seling", page_icon="📄")
 
-st.title("📄 Web Penggabung PDF")
-st.write("Unggah file PDF Anda (misal: `1.pdf` dan `2.pdf`) untuk digabungkan secara otomatis menggunakan Python.")
+st.title("📄 Web Penggabung PDF Selang-Seling")
+st.write("Unggah file pertama (1.pdf) dan file kedua (2.pdf) untuk menggabungkan halamannya secara berselang-seling otomatis.")
 
-# Fitur unggah file (mendukung banyak file sekaligus)
-uploaded_files = st.file_uploader(
-    "Pilih file-file PDF yang ingin digabungkan", 
-    type="pdf", 
-    accept_multiple_files=True
-)
+# Input unggahan terpisah untuk menjaga urutan file A dan file B
+file_a = st.file_uploader("Unggah File Pertama (PDF 1)", type="pdf", key="pdf1")
+file_b = st.file_uploader("Unggah File Kedua (PDF 2)", type="pdf", key="pdf2")
 
-if uploaded_files:
-    st.success(f"{len(uploaded_files)} file berhasil diunggah.")
+if file_a and file_b:
+    st.success("Kedua file berhasil diunggah!")
     
-    # Tombol untuk memproses penggabungan
-    if st.button("Gabungkan PDF Sekarang"):
-        with st.spinner("Sedang menggabungkan..."):
+    if st.button("Gabungkan PDF Selang-Seling"):
+        with st.spinner("Sedang memproses halaman..."):
             try:
-                # Inisialisasi penggabung PDF
+                # Membaca kedua file PDF
+                reader_a = PdfReader(io.BytesIO(file_a.read()))
+                reader_b = PdfReader(io.BytesIO(file_b.read()))
+                
+                # Inisialisasi penulis PDF baru
                 merger = PdfWriter()
                 
-                # Membaca setiap file dari memori web
-                for uploaded_file in uploaded_files:
-                    bytes_data = uploaded_file.read()
-                    merger.append(io.BytesIO(bytes_data))
+                # Mendapatkan jumlah total halaman dari masing-masing file
+                len_a = len(reader_a.pages)
+                len_b = len(reader_b.pages)
                 
-                # Menyimpan hasil gabungan ke memori sementara (buffer)
+                # Mengambil jumlah putaran maksimal berdasarkan file yang memiliki halaman paling banyak
+                max_pages = max(len_a, len_b)
+                
+                # Proses penggabungan selang-seling halaman demi halaman
+                for i in range(max_pages):
+                    # Jika file A masih memiliki halaman di indeks ke-i, masukkan
+                    if i < len_a:
+                        merger.add_page(reader_a.pages[i])
+                    
+                    # Jika file B masih memiliki halaman di indeks ke-i, masukkan
+                    if i < len_b:
+                        merger.add_page(reader_b.pages[i])
+                
+                # Menyimpan hasil ke memori sementara (buffer)
                 output_pdf = io.BytesIO()
                 merger.write(output_pdf)
                 merger.close()
                 output_pdf.seek(0)
                 
-                st.success("🎉 Penggabungan selesai!")
+                st.success("🎉 Penggabungan selang-seling selesai!")
                 
-                # Menyediakan tombol unduh untuk pengguna web
+                # Tombol unduh untuk pengguna
                 st.download_button(
                     label="📥 Unduh Hasil Gabungan",
                     data=output_pdf,
-                    file_name="gabungan_otomatis.pdf",
+                    file_name="gabungan_selang_seling.pdf",
                     mime="application/pdf"
                 )
             except Exception as e:
                 st.error(f"Terjadi kesalahan: {e}")
+elif file_a or file_b:
+    st.info("Silakan unggah kedua file PDF terlebih dahulu untuk mulai menggabungkan.")
