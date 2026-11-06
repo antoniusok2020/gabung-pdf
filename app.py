@@ -1,10 +1,11 @@
 import streamlit as st
 from pypdf import PdfReader, PdfWriter
+import io
 
 # Konfigurasi halaman web
-st.set_page_config(page_title="Penggabung PDF Selang-Seling v2", page_icon="📄")
+st.set_page_config(page_title="Penggabung PDF Selang-Seling v3", page_icon="📄")
 
-st.title("📄 Web Penggabung PDF Selang-Seling (Versi Hemat RAM)")
+st.title("📄 Web Penggabung PDF Selang-Seling (Fixed RAM)")
 st.write("Versi optimasi untuk file berukuran besar hingga 500 MB.")
 
 # Input unggahan terpisah
@@ -15,10 +16,9 @@ if file_a and file_b:
     st.success("Kedua file siap diproses!")
     
     if st.button("Gabungkan PDF Selang-Seling Sekarang"):
-        # Indikator loading agar pengguna tahu web sedang bekerja
         with st.spinner("Sedang memproses halaman file besar... Mohon tunggu..."):
             try:
-                # OPTIMASI: Membaca langsung dari objek file Streamlit (tanpa .read() atau io.BytesIO)
+                # Membaca langsung dari objek file Streamlit
                 reader_a = PdfReader(file_a)
                 reader_b = PdfReader(file_b)
                 
@@ -35,18 +35,23 @@ if file_a and file_b:
                     if i < len_b:
                         merger.add_page(reader_b.pages[i])
                 
+                # SOLUSI: Menggunakan BytesIO untuk menampung aliran data hasil penggabungan
+                bytes_buffer = io.BytesIO()
+                merger.write(bytes_buffer)
+                merger.close()
+                
+                # Mengembalikan posisi pembacaan buffer ke awal agar bisa diunduh
+                bytes_buffer.seek(0)
+                
                 st.success("🎉 Penggabungan selesai! Siap diunduh.")
                 
-                # OPTIMASI: Menulis hasil langsung ke fungsi unduh untuk menghemat RAM
+                # Tombol unduh dengan memanggil data yang sudah dialirkan ke buffer
                 st.download_button(
                     label="📥 Unduh Hasil Gabungan",
-                    data=merger.stream, # Menggunakan stream internal pypdf, bukan buffer RAM tambahan
+                    data=bytes_buffer.getvalue(),
                     file_name="gabungan_selang_seling_besar.pdf",
                     mime="application/pdf"
                 )
-                
-                # Bersihkan merger dari memori setelah selesai
-                merger.close()
                 
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat memproses file: {e}")
